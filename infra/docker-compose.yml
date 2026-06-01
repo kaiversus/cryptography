@@ -1,0 +1,25 @@
+version: "3.9"
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    command: start-dev
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports: ["8081:8080"]
+  
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+
+  gateway:
+    build: ../gateway
+    ports: ["8000:8000"]
+    depends_on: [keycloak, redis]
+    environment:
+      KEYCLOAK_URL: http://keycloak:8080
+      REDIS_URL: redis://redis:6379
+
+networks:
+  default:
+    name: gw-net
