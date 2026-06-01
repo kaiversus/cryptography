@@ -2,7 +2,7 @@
   "id" : "a7d61199-95a5-4c28-8608-4d3596ebb137",
   "realm" : "nt219",
   "notBefore" : 0,
-  "defaultSignatureAlgorithm" : "RS256",
+  "defaultSignatureAlgorithm" : "ES256",
   "revokeRefreshToken" : false,
   "refreshTokenMaxReuse" : 0,
   "accessTokenLifespan" : 300,
@@ -1314,7 +1314,7 @@
         "ecdsaEllipticCurveKey" : [ "P-256" ],
         "ecdsaPrivateKey" : [ "MEECAQAwEwYHKoZIzj0CAQYIKoZIzj0DAQcEJzAlAgEBBCCjjqkOqC1QnUxPnrsHfx9+aPxrM6Td7Xh2s6qKCu/s2w==" ],
         "active" : [ "true" ],
-        "priority" : [ "0" ],
+        "priority" : [ "200" ],
         "enabled" : [ "true" ]
       }
     }, {
@@ -1324,9 +1324,13 @@
       "subComponents" : { },
       "config" : {
         "privateKey" : [ "MIIEpAIBAAKCAQEAtsgQ7Cmipw5FwLp2mqsPwP1godfQK+u4XPiejM74FMdZv+hHKzGJjW7Fhp5kLuNCxML932RLOv1li2IT86T4hd4Ju0jl1lzownEXd4GcGE0dFAlkKtz/9CPJ1WKWAVN9E5FjsKbM7yb3rjflPE8jqCotOk4Xostlk0NKFCNYYBTI71s5wxDTiK1DNokO3agd3Tg/VdRKBMUGRJtOzzaYxkqk2YO5plfVjCS3u4IaZ9RsJyVs++hg8WVA2f15yW1uwQUzHePlP5L9ty6sJnV6H24sms4UjhxBBUsLO+4QQAEn9s+4x28PprTc+9L/O/HZGScgRBsJh5ZwA3Z5hYHkCQIDAQABAoIBAC/XmiZWl45me/eAVv8Q+2SmbZ6vIHv+jRk4sjdlDSZTL7i9kbNKmhh9ABLGbq6fKaDa8RyB4fck0Gl1WIeTjMFtZtqwsAg19W6/r0bGlBcASDYwZxmZEx3SKEhEL8NVGQ4AJjnczxNh/b6KPuRUSp7/uyrhueoQlxu+pysyPTWYiSIsIV/PYhHjb5Wjqok49vtWkEDFAqcB0NtT016YPfeT9PPQzMUlFa5I3XYjPxxEAa84yGWNcz/skMCxh+9mORWxJBdXSCmVGOd6u+iq7Qb/4n8ajJlAX2shyeqbOAtOfEBT13r1UYTR9WNpiyeu4gFsGh6LnpZGTcrsMOw0jSkCgYEA80HAZ3lAFDB0M84FHq4XRKj8ONWSHSWhbJROF6heuVLIJbHLQB6THW81rEJSALtD0t8VQx4sGuTeYZ/k/uHZCwlxuyrrggFKhlOYtrMZAt0gFfwDi3HdelLO4FSEj/mXWlIxiHOmO1joAQtnoES9BwO4/qd9yvudCveN95IBaocCgYEAwFtMCAtNzyyu4A3wq1CdO2Wjc8gkRuXv78+SRYgmsOwIveXDCCvXTT1HseqoGPcMBJgL/Zj/3Z9ocpBo4RZ3o65ZkW51L75trbt2JpaRifHLGKKYk2F59ArnittlhYzYTfG961abqcyhCk0kFlQ1uIADX90O8gzAeZfNd+MBEO8CgYEA3B8bpIar3ZkbDeXX7DNNCux/kE5ysb1jnYV2RSIu1TR7uOByM8t3BKOlxgMdgVvzu9Xyv5GGB7AjK+QsrBhi9wHM0Lm98x6H+ZWcE3dtopHGfx5VdtHKwO4+FfFlI4OP2kOWXwuH2RxSlN9lHjoVc0uDE60sv4mASnRJG0Yb0fECgYAKGYEPdxB5zT3NU84MIKpwwPBpFtwYwN/tNnfWoMRvS6VV2yd3WV3vl0UZaVm0HdyKrTUL9qmQiFsikMSA9P4JIRFg2mzauePmWE5mzkcL+B8Sxw69xkNx9dScbNKSxYdh6Exxe9Wmf7EA6nX3mipL6qTCtsefG95LRBYsskWPDwKBgQCupEJxD2WQfZuM0G9LLh7M/fo+Z5urL0nGykBd/ZNOPGO/Zfl46flxhmXOiARSGt35KJ575iZkcqxw5B1lzQAy70PZ/oTR+Nm3kyKJInjxs7Ctqyw4V85TdZl1k5tdqcbEeSdOexkholMCoXthpHDbVJ4UBZG703p9hLz3qf7I0A==" ],
+        "keySize" : [ "2048" ],
         "keyUse" : [ "SIG" ],
         "certificate" : [ "MIICmTCCAYECBgGege6F3jANBgkqhkiG9w0BAQsFADAQMQ4wDAYDVQQDDAVudDIxOTAeFw0yNjA2MDEwNjQ0MTNaFw0zNjA2MDEwNjQ1NTNaMBAxDjAMBgNVBAMMBW50MjE5MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtsgQ7Cmipw5FwLp2mqsPwP1godfQK+u4XPiejM74FMdZv+hHKzGJjW7Fhp5kLuNCxML932RLOv1li2IT86T4hd4Ju0jl1lzownEXd4GcGE0dFAlkKtz/9CPJ1WKWAVN9E5FjsKbM7yb3rjflPE8jqCotOk4Xostlk0NKFCNYYBTI71s5wxDTiK1DNokO3agd3Tg/VdRKBMUGRJtOzzaYxkqk2YO5plfVjCS3u4IaZ9RsJyVs++hg8WVA2f15yW1uwQUzHePlP5L9ty6sJnV6H24sms4UjhxBBUsLO+4QQAEn9s+4x28PprTc+9L/O/HZGScgRBsJh5ZwA3Z5hYHkCQIDAQABMA0GCSqGSIb3DQEBCwUAA4IBAQCWcoBnNu8v5MuIe43mo10MlCJfkSGjRJV/kYdMyctFHuIfyvSSpwl1x/pakQMPPkCkIXkMpPAj4U20vQE49X87TqIuvU83Vn516GDLGROxsvLtRNoeoWuq6ChDDZ513JUMpRkj8gd4jAKsqvNAWBX2SXnFruEXwzzOAPwuUtUmLrld+yqDnPKxApmBR/09O3zQUKetNhJ70km8ECnrXMfAmPL6KbQjAHqxRFUFiGgjTgJ0yuknQoKLwdLOtLreST3JnYeG0t0e97poXvHyDzk1CSNC/wpepGGQ/6FxSxnKD+DwW+l6j/x9zrXRwqIBj0sCcKLOnT6WPt4jlCPs9tEM" ],
-        "priority" : [ "100" ]
+        "active" : [ "true" ],
+        "priority" : [ "50" ],
+        "enabled" : [ "true" ],
+        "algorithm" : [ "RS256" ]
       }
     }, {
       "id" : "78ea9f39-829d-44a6-9c4d-82ede06732bb",
@@ -1918,13 +1922,22 @@
   "firstBrokerLoginFlow" : "first broker login",
   "attributes" : {
     "cibaBackchannelTokenDeliveryMode" : "poll",
-    "cibaExpiresIn" : "120",
     "cibaAuthRequestedUserHint" : "login_hint",
-    "oauth2DeviceCodeLifespan" : "600",
     "oauth2DevicePollingInterval" : "5",
-    "parRequestUriLifespan" : "60",
+    "clientOfflineSessionMaxLifespan" : "0",
+    "clientSessionIdleTimeout" : "0",
+    "actionTokenGeneratedByUserLifespan.verify-email" : "",
+    "actionTokenGeneratedByUserLifespan.idp-verify-account-via-email" : "",
+    "clientOfflineSessionIdleTimeout" : "0",
+    "actionTokenGeneratedByUserLifespan.execute-actions" : "",
     "cibaInterval" : "5",
-    "realmReusableOtpCode" : "false"
+    "realmReusableOtpCode" : "false",
+    "cibaExpiresIn" : "120",
+    "oauth2DeviceCodeLifespan" : "600",
+    "parRequestUriLifespan" : "60",
+    "clientSessionMaxLifespan" : "0",
+    "shortVerificationUri" : "",
+    "actionTokenGeneratedByUserLifespan.reset-credentials" : ""
   },
   "keycloakVersion" : "24.0.5",
   "userManagedAccessAllowed" : false,
