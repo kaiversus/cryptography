@@ -1,40 +1,21 @@
-from fastapi import FastAPI, Header, HTTPException
-# 1. Import module của bạn
-from crypto.jwt_verifier import verify_token, TokenInvalid
+from fastapi import FastAPI, Header, HTTPException, Request
+from middleware.auth import jwt_auth_middleware
 
 app = FastAPI(title="Secure API Gateway")
 
+app.middleware("http")(jwt_auth_middleware)
+
 @app.get("/health")
-def health(): 
-    return {"status": "ok"}
+def health(): return {"status": "ok"}
 
 @app.get("/api/public")
-def public(): 
-    return {"message": "public, no auth"}
+def public(): return {"message": "public, no auth"}
 
-# 2. Sửa lại endpoint /api/protected
 @app.get("/api/protected")
-def protected(authorization: str | None = Header(None)):
-    # Kiểm tra format Bearer
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
-    
-    # Lấy token (bỏ chữ "Bearer ")
-    token = authorization.replace("Bearer ", "")
-    
-    # 3. Gọi hàm verify_token của bạn
-    try:
-        payload = verify_token(token)
-        # Nếu thành công, trả về thông tin user
-        return {
-            "message": "Authenticated successfully", 
-            "user": payload.get("sub"),
-            "full_payload": payload
-        }
-    except TokenInvalid:
-        # Nếu lỗi (hết hạn, sai chữ ký), trả về 401
-        raise HTTPException(status_code=401, detail="Invalid token or signature")
+def protected(request: Request):
+    username = request.state.user.get("preferred_username") if hasattr(request.state, "user") else "Unknown"
+    roles = request.state.user.get("realm_access", {}).get("roles", []) if hasattr(request.state, "user") else []
+    return {"user": username, "roles": roles}
 
 @app.get("/api/service")
-def service(): 
-    return {"message": "TODO: HMAC check"}
+def service(): return {"message": "TODO: HMAC check"}
