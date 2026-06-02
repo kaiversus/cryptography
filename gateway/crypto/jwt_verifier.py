@@ -26,12 +26,17 @@ def verify_token(token: str) -> dict:
         unverified_header = jwt.get_unverified_header(token)
         kid = unverified_header["kid"]
         alg = unverified_header["alg"]
-        if alg not in ("ES256", "HS256"):
+        
+        # GỘP: Cho phép cả ES256 (Đạt), RS256 (Đăng) và HS256 (Unit Test)
+        if alg not in ("ES256", "RS256", "HS256"):
             raise TokenInvalid(f"alg {alg} not allowed")
+            
         jwks = _get_jwks()
         key = next((k for k in jwks["keys"] if k["kid"] == kid), None)
         if not key:
             raise TokenInvalid("kid not found in JWKS")
+            
+        # GỘP: Giữ nguyên cấu hình kiểm tra nghiêm ngặt của Đăng nhưng dùng [alg] động
         payload = jwt.decode(
             token, key, algorithms=[alg],
             issuer=ISSUER, audience=AUDIENCE,
