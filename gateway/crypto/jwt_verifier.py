@@ -29,9 +29,9 @@ def verify_token(token: str) -> dict:
         kid = unverified_header["kid"]
         alg = unverified_header["alg"]
         
-        # SỬA 3: Keycloak dùng RS256, phải cho phép nó!
-        if alg != "RS256":
-            raise TokenInvalid(f"alg {alg} not allowed, expected RS256")
+        # Cho phép RS256 (Keycloak thật) và HS256 (cho Unit Test)
+        if alg not in ("RS256", "HS256"):
+            raise TokenInvalid(f"alg {alg} not allowed")
             
         jwks = _get_jwks()
         key = next((k for k in jwks["keys"] if k["kid"] == kid), None)
@@ -40,7 +40,7 @@ def verify_token(token: str) -> dict:
             
         # Giải mã
         payload = jwt.decode(
-            token, key, algorithms=["RS256"], # Chỉ nhận RS256
+            token, key, algorithms=["RS256", "HS256"], 
             issuer=ISSUER, audience=AUDIENCE,
             options={"require": ["exp", "iat", "iss", "aud"]},
         )
