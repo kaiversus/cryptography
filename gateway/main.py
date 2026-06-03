@@ -1,9 +1,12 @@
-from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi import FastAPI, Request
 from middleware.auth import jwt_auth_middleware
+from middleware.hmac_auth import hmac_auth_middleware
 
 app = FastAPI(title="Secure API Gateway")
 
-app.middleware("http")(jwt_auth_middleware)
+# Đăng ký các lớp giáp bảo mật (Middleware chạy từ dưới lên trên)
+app.middleware("http")(hmac_auth_middleware)  # Lớp chặn HMAC cho M2M
+app.middleware("http")(jwt_auth_middleware)   # Lớp chặn JWT cho User
 
 @app.get("/health")
 def health(): return {"status": "ok"}
@@ -18,4 +21,5 @@ def protected(request: Request):
     return {"user": username, "roles": roles}
 
 @app.get("/api/service")
-def service(): return {"message": "TODO: HMAC check"}
+def service(): 
+    return {"message": "HMAC signature verified successfully! Welcome, trusted service."}

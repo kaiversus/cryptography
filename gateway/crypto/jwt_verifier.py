@@ -1,7 +1,8 @@
 import httpx
+from jose import jwt, JWTError
 from cachetools import TTLCache
 from jose import jwt, JWTError
-
+import base64 
 # SỬA 1: Dùng mạng nội bộ Docker để gọi Keycloak
 JWKS_URL = "http://keycloak:8080/realms/nt219/protocol/openid-connect/certs"
 
@@ -23,11 +24,27 @@ def _get_jwks() -> dict:
 
 def verify_token(token: str) -> dict:
     try:
+        # BỔ SUNG KHỐI NÀY: KIỂM TRA TÍNH DUY NHẤT CỦA BASE64 (Chống Malleability)
+        parts = token.split('.')
+        if len(parts) == 3:
+            sig_b64 = parts[2]
+            # Bù lại dấu '=' bị thiếu của chuẩn Base64URL để giải mã
+            pad_len = 4 - (len(sig_b64) % 4)
+            sig_padded = sig_b64 + ('=' * pad_len if pad_len != 4 else '')
+            
+            # Giải mã ra bytes rồi mã hóa ngược lại thành string chuẩn
+            sig_bytes = base64.urlsafe_b64decode(sig_padded)
+            canonical_sig = base64.urlsafe_b64encode(sig_bytes).decode('utf-8').rstrip('=')
+            
+            # Nếu chuỗi khách gửi không giống chuỗi chuẩn (VD: gửi B nhưng chuẩn là A) -> Báo lỗi!
+            if sig_b64 != canonical_sig:
+                raise TokenInvalid("Strict Base64 Validation Failed: Malleable signature detected!")
+
+        # ... (Giữ nguyên đoạn code giải mã và check JWT cũ của anh em mình từ đây trở xuống)
         unverified_header = jwt.get_unverified_header(token)
         kid = unverified_header["kid"]
         alg = unverified_header["alg"]
         
-        # GỘP: Cho phép cả ES256 (Đạt), RS256 (Đăng) và HS256 (Unit Test)
         if alg not in ("ES256", "RS256", "HS256"):
             raise TokenInvalid(f"alg {alg} not allowed")
             
@@ -36,7 +53,6 @@ def verify_token(token: str) -> dict:
         if not key:
             raise TokenInvalid("kid not found in JWKS")
             
-        # GỘP: Giữ nguyên cấu hình kiểm tra nghiêm ngặt của Đăng nhưng dùng [alg] động
         payload = jwt.decode(
             token, key, algorithms=[alg],
             issuer=ISSUER, audience=AUDIENCE,
@@ -45,3 +61,6 @@ def verify_token(token: str) -> dict:
         return payload
     except JWTError as e:
         raise TokenInvalid(str(e))
+    except Exception as e:
+        raise TokenInvalid(f"Invalid token format: {str(e)}")
+
