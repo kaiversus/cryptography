@@ -1,0 +1,68 @@
+"""Fixtures và helpers cho security tests.
+
+Chiến lược: mock JWKS endpoint giống pattern của A trong test_jwt_verifier.py,
+để test không phụ thuộc Keycloak chạy. Mock dùng HS256 cho đơn giản;
+verify_token() của A vẫn whitelist HS256 nên signature check vẫn hoạt động.
+"""
+import time
+import pytest
+from jose import jwt as jose_jwt
+from fastapi.testclient import TestClient
+
+import gateway.crypto.jwt_verifier as jv
+from gateway.main import app
+
+# Khóa "thật" mà JWKS của mình giả lập sẽ trả về
+TEST_SECRET = "nt219-secret-key"
+TEST_KID = "test-key-1"
+TEST_PUBLIC_KEY = {
+    "kty": "oct",
+    "kid": TEST_KID,
+    "alg": "HS256",
+    "k": "bnQyMTktc2VjcmV0LWtleQ",  # base64url của TEST_SECRET
+}
+
+
+@pytest.fixture(autouse=True)
+def mock_jwks(monkeypatch):
+    """Mọi test trong tests/security/ đều dùng JWKS giả này."""
+    monkeypatch.setattr(jv, "_get_jwks", lambda: {"keys": [TEST_PUBLIC_KEY]})
+
+
+@pytest.fixture(scope="session")
+def client():
+    return TestClient(app)
+
+
+def make_token(
+    *,
+    sub: str = "testuser",
+    iss: str | None = None,
+    aud: str | None = None,
+    expires_in: int = 300,
+    alg: str = "HS256",
+    secret: str = TEST_SECRET,
+    kid: str = TEST_KID,
+    extra: dict | None = None,
+) -> str:
+    """Helper tạo token tùy biến để test attack.
+
+    Default = token hợp lệ. Override từng tham số để mô phỏng tấn công:
+    - secret khác TEST_SECRET → SEC-01 forgery
+    - alg='none' → SEC-02 downgrade
+    - expires_in âm → SEC-04 expired
+    - aud sai → SEC-05
+    - iss sai → SEC-06
+    """
+    now = int(time.time())
+    payload = {
+        "sub": sub,
+        "iss": iss if iss is not None else jv.ISSUER,
+        "aud": aud if aud is not None else jv.AUDIENCE,
+        "iat": now,
+        "exp": now + expires_in,
+        "jti": f"jti-{now}-{sub}",
+    }
+    if extra:
+        payload.update(extra)
+    return jose_jwt.encode(payload, secret, algorithm=alg, headers={"kid": kid})
