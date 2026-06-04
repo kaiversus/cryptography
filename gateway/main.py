@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Header, HTTPException, Request
-from middleware.auth import jwt_auth_middleware
+from gateway.middleware.auth import jwt_auth_middleware
 
 app = FastAPI(title="Secure API Gateway")
 
