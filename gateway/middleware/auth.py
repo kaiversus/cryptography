@@ -1,6 +1,6 @@
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from crypto.jwt_verifier import verify_token, TokenInvalid
+from gateway.crypto.jwt_verifier import verify_token, TokenInvalid
 
 PROTECTED_PREFIX = "/api/protected"
 
