@@ -57,3 +57,59 @@ def make_alg_none_token() -> str:
         "exp": int(time.time()) + 300,
     })
     return f"{header}.{payload}."  # signature rỗng
+
+# ============== HMAC helpers (D4) ==============
+import hashlib as _hashlib
+import hmac as _hmac
+import uuid as _uuid
+
+HMAC_SECRET = b"dev-shared-secret"
+HMAC_KEY_ID = "dev-key-01"
+
+
+def sign_hmac(
+    method: str = "POST",
+    path: str = "/api/service",
+    query: str = "",
+    body: bytes = b"",
+    host: str = "testserver",
+    ts: int | None = None,
+    nonce: str | None = None,
+    secret: bytes = HMAC_SECRET,
+    key_id: str = HMAC_KEY_ID,
+) -> dict:
+    """Tạo bộ headers HMAC hợp lệ. Override params để dựng attack vector."""
+    ts = ts if ts is not None else int(time.time())
+    nonce = nonce or str(_uuid.uuid4())
+
+    signed = {
+        "host": host,
+        "x-key-id": key_id,
+        "x-nonce": nonce,
+        "x-timestamp": str(ts),
+    }
+    sorted_keys = sorted(signed.keys())
+    canonical_headers = "".join(f"{k}:{signed[k]}\n" for k in sorted_keys)
+    signed_str = ";".join(sorted_keys)
+    body_hash = _hashlib.sha256(body).hexdigest()
+
+    canonical = (
+        method.upper() + "\n"
+        + path + "\n"
+        + query + "\n"
+        + canonical_headers
+        + "\n"
+        + signed_str + "\n"
+        + body_hash
+    )
+    canonical_hash = _hashlib.sha256(canonical.encode()).hexdigest()
+    sts = f"HMAC-SHA256\n{ts}\ngateway-internal/v1\n{canonical_hash}"
+    sig = _hmac.new(secret, sts.encode(), _hashlib.sha256).hexdigest()
+
+    return {
+        "Host": host,
+        "X-Timestamp": str(ts),
+        "X-Nonce": nonce,
+        "X-Key-Id": key_id,
+        "X-Signature": sig,
+    }
