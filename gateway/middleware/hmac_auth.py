@@ -2,7 +2,8 @@ import os
 import redis
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from crypto.hmac_verifier import verify_hmac_request, HMACInvalid
+from gateway.crypto.hmac_verifier import verify_hmac_request, HMACInvalid
+from gateway.observability.metrics import record_failure, record_success
 
 SERVICE_PREFIX = "/api/service"
 
@@ -30,6 +31,8 @@ async def hmac_auth_middleware(request: Request, call_next):
             nonce_store=redis_client,
         )
     except HMACInvalid as e:
+        record_failure("hmac", str(e).split(":")[0])
         return JSONResponse(status_code=401, content={"detail": str(e)})
 
+    record_success("hmac")
     return await call_next(request)

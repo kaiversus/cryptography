@@ -1,8 +1,16 @@
 from fastapi import FastAPI, Request
+from prometheus_fastapi_instrumentator import Instrumentator
+
 from middleware.auth import jwt_auth_middleware
 from middleware.hmac_auth import hmac_auth_middleware
+from routes.auth import router as auth_router
 
 app = FastAPI(title="Secure API Gateway")
+app.include_router(auth_router)
+
+# /metrics endpoint cho Prometheus scrape. Instrument trước khi add middleware
+# để mọi request đều có HTTP metric (latency, status code, in-progress).
+Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
 # Middleware FastAPI chạy LIFO theo thứ tự đăng ký:
 # hmac đăng ký trước → chạy SAU; jwt đăng ký sau → chạy TRƯỚC.
