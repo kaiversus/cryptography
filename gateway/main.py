@@ -1,9 +1,9 @@
 from fastapi import FastAPI, Request
 from prometheus_fastapi_instrumentator import Instrumentator
 
-from middleware.auth import jwt_auth_middleware
-from middleware.hmac_auth import hmac_auth_middleware
-from routes.auth import router as auth_router
+from gateway.middleware.auth import jwt_auth_middleware
+from gateway.middleware.hmac_auth import hmac_auth_middleware
+from gateway.routes.auth import router as auth_router
 
 app = FastAPI(title="Secure API Gateway")
 app.include_router(auth_router)
