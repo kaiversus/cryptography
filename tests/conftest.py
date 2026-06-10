@@ -11,6 +11,22 @@ from fastapi.testclient import TestClient
 
 import gateway.crypto.jwt_verifier as jv
 from gateway.main import app
+from gateway.storage import revocation as _revocation
+
+
+class _NoopRevocationStore:
+    """Stub mặc định cho mọi test: không token nào bị revoke. Test riêng cho
+    revocation tự override bằng set_client()."""
+    def setex(self, name, ttl, value): return True
+    def exists(self, name): return 0
+    def ttl(self, name): return -2
+
+
+@pytest.fixture(autouse=True)
+def _stub_revocation_store():
+    _revocation.set_client(_NoopRevocationStore())
+    yield
+    _revocation.set_client(None)
 
 # Khóa "thật" mà JWKS của mình giả lập sẽ trả về
 TEST_SECRET = "nt219-secret-key"
