@@ -13,3 +13,6 @@ pytest-html==4.1.1
 PyJWT==2.8.0
 freezegun==1.4.0
 httpx==0.27.0
+
+slowapi==0.1.9
+limits==3.8.0
