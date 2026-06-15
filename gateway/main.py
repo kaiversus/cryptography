@@ -39,7 +39,7 @@ async def structured_logging_middleware(request: Request, call_next):
                 "method": request.method,
                 "path": request.url.path,
                 "status_code": response.status_code,
-                "client_ip": request.client.host,
+                "client_ip": request.client.host if request.client else "127.0.0.1",
                 "latency_ms": process_time_ms
             }
         }
