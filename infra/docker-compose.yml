@@ -15,6 +15,7 @@ services:
 
   vault:
     image: hashicorp/vault:1.15
+    container_name: infra-vault-1
     cap_add: [IPC_LOCK]
     environment:
       VAULT_DEV_ROOT_TOKEN_ID: dev-root-token
