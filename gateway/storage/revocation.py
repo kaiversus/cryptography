@@ -24,7 +24,6 @@ _client: _RedisLike | None = None
 def _get_client() -> _RedisLike:
     global _client
     if _client is None:
-        # Giữ lại REDIS_URL của Sinh viên A để khớp với docker-compose.yml
         redis_url = os.getenv("REDIS_URL", "redis://redis:6379")
         _client = redis.from_url(redis_url, decode_responses=True)
     return _client
