@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import gateway.crypto.jwt_verifier as jv
-import middleware.hmac_auth as hmac_auth_module
+import gateway.middleware.hmac_auth as hmac_auth_module
 from gateway.main import app
 from tests.security.helpers import TEST_PUBLIC_KEY
 

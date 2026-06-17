@@ -1,19 +1,50 @@
-# file: storage/revocation.py
-import os
-import redis
-import time
+"""JWT revocation store backed by Redis.
 
-# Lấy URL kết nối Redis từ biến môi trường (đã có trong docker-compose.yml)
-REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379")
-r = redis.from_url(REDIS_URL, decode_responses=True)
+Phương án: blacklist theo `jti` với TTL = exp - now để Redis tự dọn entry hết hạn.
+Middleware JWT sau khi verify chữ ký phải gọi is_revoked(jti) trước khi cho qua.
+"""
+import os
+import time
+from typing import Protocol
+
+import redis
 
 PREFIX = "revoked_jti:"
 
-def revoke(jti: str, exp: int) -> None:
-    """Đưa jti vào blacklist của Redis với thời gian sống (TTL) vừa đủ"""
-    ttl = max(1, exp - int(time.time()))
-    r.setex(PREFIX + jti, ttl, "1")
+
+class _RedisLike(Protocol):
+    def setex(self, name: str, time: int, value: str) -> bool: ...
+    def exists(self, name: str) -> int: ...
+    def ttl(self, name: str) -> int: ...
+
+
+_client: _RedisLike | None = None
+
+
+def _get_client() -> _RedisLike:
+    global _client
+    if _client is None:
+        # Giữ lại REDIS_URL của Sinh viên A để khớp với docker-compose.yml
+        redis_url = os.getenv("REDIS_URL", "redis://redis:6379")
+        _client = redis.from_url(redis_url, decode_responses=True)
+    return _client
+
+
+def set_client(client: _RedisLike) -> None:
+    """Inject Redis client for tests (monkeypatch)."""
+    global _client
+    _client = client
+
+
+def revoke(jti: str, exp: int) -> int:
+    """Đẩy jti vào blacklist với TTL = exp - now. Trả về TTL thực tế đã set."""
+    ttl = max(1, int(exp) - int(time.time()))
+    _get_client().setex(PREFIX + jti, ttl, "1")
+    return ttl
+
 
 def is_revoked(jti: str) -> bool:
     """Kiểm tra token có nằm trong blacklist không"""
-    return r.exists(PREFIX + jti) == 1
+    if not jti:
+        return False
+    return _get_client().exists(PREFIX + jti) == 1

@@ -1,0 +1,50 @@
+name: API Gateway CI Pipeline
+
+# Kích hoạt đường ống mỗi khi có thay đổi trên nhánh main
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test-and-lint:
+    runs-on: ubuntu-latest
+
+    # Khởi chạy dịch vụ Redis ngầm trong máy ảo để các bài test Rate Limit có chỗ kết nối
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    # Bước 1: Kéo code từ repository về máy ảo
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # Bước 2: Thiết lập môi trường Python 3.11
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+        cache: 'pip' # Bật cache để các lần chạy sau tải thư viện siêu tốc
+
+    # Bước 3: Cài đặt các thư viện cần thiết cho Gateway và Test
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f gateway/requirements.txt ]; then pip install -r gateway/requirements.txt; fi
+        pip install pytest pytest-asyncio httpx
+
+    # Bước 4: Khai hỏa pytest để quét sạch toàn bộ các file test trong dự án
+    - name: Run automated tests with Pytest
+      env:
+        REDIS_URL: redis://localhost:6379/0
+      run: |
+        pytest

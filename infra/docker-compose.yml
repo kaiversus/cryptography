@@ -1,4 +1,3 @@
-version: "3.9"
 services:
   keycloak:
     image: quay.io/keycloak/keycloak:24.0
@@ -9,18 +8,81 @@ services:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
     ports: ["8081:8080"]
-  
+
   redis:
     image: redis:7-alpine
     ports: ["6379:6379"]
 
+  vault:
+    image: hashicorp/vault:1.15
+    command: server -dev
+    container_name: infra-vault-1
+    cap_add: [IPC_LOCK]
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: dev-root-token
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+      VAULT_ADDR: http://0.0.0.0:8200
+    ports: ["8200:8200"]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8200/v1/sys/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  vault-seed:
+    image: hashicorp/vault:1.15
+    depends_on:
+      vault:
+        condition: service_healthy
+    environment:
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: dev-root-token
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        vault kv put secret/gateway/hmac/dev-key-01 value="dev-shared-secret"
+        vault kv put secret/gateway/hmac/prod-key-01 value="prod-shared-secret-32bytes-min!!"
+        vault kv put secret/gateway/hs256 value="hs256-realm-shared-secret-32b!!"
+        echo "vault seed done"
+    restart: "no"
+
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports: ["9090:9090"]
+    depends_on: [gateway]
+
+  grafana:
+    image: grafana/grafana:10.4.0
+    ports: ["3001:3000"]
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - ./grafana-provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana-provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana-dashboard.json:/var/lib/grafana/dashboards/gateway.json:ro
+    depends_on: [prometheus]
+
   gateway:
     build: ../gateway
     ports: ["8000:8000"]
-    depends_on: [keycloak, redis]
+    depends_on:
+      keycloak: { condition: service_started }
+      redis: { condition: service_started }
+      vault: { condition: service_healthy }
     environment:
       KEYCLOAK_URL: http://keycloak:8080
-      REDIS_URL: redis://redis:6379
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: dev-root-token
+      VAULT_MOUNT: secret
+      HMAC_VAULT_PATH: gateway/hmac/{key_id}
 
 networks:
   default:

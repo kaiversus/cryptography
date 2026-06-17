@@ -5,6 +5,7 @@ Style: AWS SigV4-simplified (bỏ derive signing key, thêm nonce store).
 """
 import hashlib
 import hmac
+import os
 import re
 import time
 from typing import Mapping
@@ -15,10 +16,31 @@ TIMESTAMP_WINDOW = 300
 NONCE_TTL = 600
 EMPTY_BODY_HASH = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
-# Secret store. TODO B-D6: thay bằng Vault lookup.
-_SECRETS = {
+# Dev fallback. Production phải bật HMAC_REQUIRE_VAULT=1 để fail-closed.
+_DEV_SECRETS = {
     "dev-key-01": b"dev-shared-secret",
 }
+_VAULT_PATH_TEMPLATE = os.getenv("HMAC_VAULT_PATH", "gateway/hmac/{key_id}")
+_REQUIRE_VAULT = os.getenv("HMAC_REQUIRE_VAULT", "0") == "1"
+
+
+def _resolve_secret(key_id: str) -> bytes | None:
+    """Lookup theo thứ tự: Vault → dev fallback (nếu không bắt buộc Vault).
+
+    Trả None nếu không tìm được secret hợp lệ — caller raise unknown_key.
+    """
+    try:
+        from gateway.storage.vault_client import get_secret, VaultError
+        path = _VAULT_PATH_TEMPLATE.format(key_id=key_id)
+        try:
+            return get_secret(path, field="value").encode()
+        except VaultError:
+            if _REQUIRE_VAULT:
+                return None
+    except ImportError:
+        if _REQUIRE_VAULT:
+            return None
+    return _DEV_SECRETS.get(key_id)
 
 _UUID_V4_RE = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
@@ -90,8 +112,8 @@ def verify_hmac_request(method, path, query, headers, body, nonce_store):
     if nonce_store.exists(nonce_key):
         raise HMACInvalid("replay_detected")
 
-    # 5. Secret lookup
-    secret = _SECRETS.get(key_id)
+    # 5. Secret lookup (Vault → dev fallback)
+    secret = _resolve_secret(key_id)
     if secret is None:
         raise HMACInvalid("unknown_key")
 
