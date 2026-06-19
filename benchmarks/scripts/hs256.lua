@@ -1,0 +1,2 @@
+wrk.method = "GET"
+wrk.headers["Authorization"] = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwOi8va2V5Y2xvYWs6ODA4MC9yZWFsbXMvbnQyMTkiLCJleHAiOjI1MzQwMjMwMDc5OSwicmVhbG1fYWNjZXNzIjp7InJvbGVzIjpbInVzZXIiXX19.npjowo9TKB8nwlLGsgrWN7_MJHK3DiwkNPhfo7Xk9Wk"
