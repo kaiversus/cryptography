@@ -6,3 +6,9 @@ __pycache__/
 benchmarks/results/*.txt
 .claude/
 .claude_cache/
+
+# Generated test/scan artifacts
+tests/results/report.html
+docs/zap-report.html
+docs/zap-report.pdf
+.pytest_cache/

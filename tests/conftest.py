@@ -4,6 +4,22 @@ Chiến lược: mock JWKS endpoint giống pattern của A trong test_jwt_verif
 để test không phụ thuộc Keycloak chạy. Mock dùng HS256 cho đơn giản;
 verify_token() của A vẫn whitelist HS256 nên signature check vẫn hoạt động.
 """
+import os
+
+# Tắt OpenTelemetry SDK trong test/CI (không có Jaeger collector). Phải set
+# TRƯỚC khi import gateway.main vì setup_tracing() chạy lúc import.
+os.environ.setdefault("OTEL_SDK_DISABLED", "true")
+
+# Verifier nhánh HS256 đọc HS256_SECRET từ env (fallback là secret của Vault).
+# Test ký token bằng TEST_SECRET nên phải đồng bộ env, nếu không token hợp lệ
+# cũng bị từ chối (mọi /api/protected trả 401) làm smoke test sai lệch.
+os.environ.setdefault("HS256_SECRET", "nt219-secret-key")
+
+# slowapi Limiter dùng storage Redis (REDIS_URL). Trong unit test không có Redis,
+# ép dùng in-memory storage để rate-limit không gọi mạng. Phải set trước khi
+# import gateway.main vì limiter khởi tạo lúc import.
+os.environ.setdefault("REDIS_URL", "memory://")
+
 import time
 import pytest
 from jose import jwt as jose_jwt

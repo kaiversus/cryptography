@@ -1,10 +1,21 @@
 from tests.security.helpers import make_token, make_alg_none_token
+from gateway.storage import revocation as _revocation
 
 PROTECTED = "/api/protected"
 
 
 def _auth(tok: str) -> dict:
     return {"Authorization": f"Bearer {tok}"}
+
+
+class _RevokedStore:
+    """Store coi mọi jti trong `revoked` là đã thu hồi."""
+    def __init__(self, revoked: set[str]):
+        self.revoked = revoked
+    def setex(self, name, ttl, value): return True
+    def exists(self, name):
+        return 1 if name.removeprefix(_revocation.PREFIX) in self.revoked else 0
+    def ttl(self, name): return -2
 
 
 def test_smoke_valid_token(client):
@@ -45,3 +56,16 @@ def test_sec06_wrong_issuer(client):
     tok = make_token(iss="http://evil.example.com/realms/fake")
     r = client.get(PROTECTED, headers=_auth(tok))
     assert r.status_code == 401
+
+
+def test_sec10_revoked_jti(client):
+    # SEC-10: Token chữ ký hợp lệ nhưng jti đã nằm trong blacklist -> 401
+    revoked_jti = "revoked-token-xyz"
+    tok = make_token(extra={"jti": revoked_jti})
+    # Trước khi revoke: token qua được.
+    assert client.get(PROTECTED, headers=_auth(tok)).status_code == 200
+    # Sau khi đẩy jti vào blacklist: cùng token bị chặn.
+    _revocation.set_client(_RevokedStore({revoked_jti}))
+    r = client.get(PROTECTED, headers=_auth(tok))
+    assert r.status_code == 401
+    assert "revoked" in r.text.lower()

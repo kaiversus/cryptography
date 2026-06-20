@@ -5,6 +5,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 # Import Rate Limit & Logger
 from gateway.middleware.rate_limit import setup_rate_limit, limiter
 from gateway.observability.logger import gateway_logger
+from gateway.observability.tracing import setup_tracing
 
 # Import Auth Middlewares
 from gateway.middleware.auth import jwt_auth_middleware
@@ -19,6 +20,9 @@ setup_rate_limit(app)
 
 # /metrics endpoint cho Prometheus scrape.
 Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
+
+# Distributed tracing (OpenTelemetry -> Jaeger). Tự no-op nếu OTEL_SDK_DISABLED=true.
+setup_tracing(app)
 
 # === MIDDLEWARE GHI LOG JSON (STRUCTURED LOGGING) ===
 @app.middleware("http")
