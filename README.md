@@ -1,15 +1,5 @@
 # Secure API Gateway with Cryptographic Enforcement
 
-> Đồ án môn **NT219 – Cryptography**. Một API Gateway (FastAPI) cưỡng chế bảo mật bằng
-> mật mã ở tầng cổng: xác thực JWT (ES256/RS256/HS256), ký HMAC-SHA256 cho traffic
-> service-to-service, thu hồi token tức thời, rate-limit, và observability đầy đủ
-> (metrics + tracing + structured log).
->
-> README này là **kim chỉ nam** cho cả nhóm: đọc xong là setup được, demo được, và
-> hiểu rõ mình đang bảo vệ cái gì. — *C (Đinh Thiên Bảo), nhóm trưởng*
-
----
-
 ## 0. TL;DR — chạy trong 3 phút
 
 ```bash
