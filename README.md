@@ -38,7 +38,7 @@ Bám theo **OWASP API Security Top 10 – 2023**, trọng tâm là:
 ## 2. Kiến trúc
 
 ```
-                         ┌────────────────────────────────────────────┐
+                         ┌──────────────────────────────────────────────┐
    Client / Service ───► │              API GATEWAY (FastAPI :8000)     │
    (JWT hoặc HMAC)       │                                              │
                          │  middleware (chạy LIFO):                     │
