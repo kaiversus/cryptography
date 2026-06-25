@@ -74,7 +74,24 @@ def protected(request: Request):
     roles = request.state.user.get("realm_access", {}).get("roles", []) if hasattr(request.state, "user") else []
     return {"user": username, "roles": roles}
 
+@app.get("/api/admin")
+@limiter.limit("5/minute")
+def admin(request: Request):
+    # Chỉ tới được đây khi đã qua authentication VÀ có role "admin" (chốt 7).
+    username = request.state.user.get("preferred_username") if hasattr(request.state, "user") else "Unknown"
+    return {"message": "admin area", "user": username}
+
 @app.post("/api/service")
 @limiter.limit("100/minute") # M2M gọi nhiều nên cho giới hạn cao hơn
 def service(request: Request):
     return {"message": "HMAC signature verified successfully"}
+
+@app.get("/audit/recent")
+@limiter.limit("30/minute")
+def audit_recent(request: Request, limit: int = 20):
+    # Sổ audit gần nhất — minh chứng chống chối bỏ (MT-NONREP). Bản ghi chỉ chứa
+    # định danh (key-id/sub), KHÔNG chứa secret.
+    # DEV/DEBUG: production nên gate sau role admin (chốt 7) trước khi phơi endpoint này.
+    from gateway.observability.audit import RECENT_AUDIT
+    items = list(RECENT_AUDIT)[-max(1, min(limit, 200)):]
+    return {"count": len(items), "records": items}

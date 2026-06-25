@@ -1,0 +1,41 @@
+=== pytest tests/security -q ===
+..............                                                           [100%]
+============================== warnings summary ===============================
+gateway\observability\logger.py:8
+tests/security/test_hmac_attacks.py::test_smoke_valid_hmac
+tests/security/test_hmac_attacks.py::test_sec07_replay_same_nonce
+tests/security/test_jwt_attacks.py::test_smoke_valid_token
+tests/security/test_jwt_attacks.py::test_sec11_admin_role_allowed
+tests/security/test_jwt_attacks.py::test_sec10_revoked_jti
+  D:\HK4\CRYPTO\Final_project\cryptography\gateway\observability\logger.py:8: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    "timestamp": datetime.utcnow().isoformat() + "Z",
+
+tests/security/test_hmac_attacks.py::test_smoke_valid_hmac
+  C:\Users\KHANH THUAN\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx\_client.py:680: DeprecationWarning: The 'app' shortcut is now deprecated. Use the explicit style 'transport=WSGITransport(app=...)' instead.
+    warnings.warn(message, DeprecationWarning)
+
+tests/security/test_jwt_attacks.py::test_smoke_valid_token
+tests/security/test_jwt_attacks.py::test_sec04_expired_token
+tests/security/test_jwt_attacks.py::test_sec05_wrong_audience
+tests/security/test_jwt_attacks.py::test_sec06_wrong_issuer
+tests/security/test_jwt_attacks.py::test_sec11_privilege_escalation_no_role
+tests/security/test_jwt_attacks.py::test_sec11_admin_role_allowed
+tests/security/test_jwt_attacks.py::test_sec10_revoked_jti
+tests/security/test_jwt_attacks.py::test_sec10_revoked_jti
+  C:\Users\KHANH THUAN\AppData\Local\Programs\Python\Python312\Lib\site-packages\jose\jwt.py:311: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = timegm(datetime.utcnow().utctimetuple())
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+14 passed, 15 warnings in 11.91s
+
+=== SEC-03 ===
+=== SEC-03: HS256 weak-key brute force demo ===
+
+[Dictionary] token ký bằng 'secret'
+  -> cracked = 'secret' trong 0.28 ms (5 lần thử)
+
+[Brute force] token ký bằng '739' (charset=digits, len<=3)
+  -> cracked = '739' trong 14.87 ms
+
+KẾT LUẬN: secret HS256 ngắn/đoán được = forgery toàn hệ thống.
+Khuyến nghị: secret >= 32 bytes ngẫu nhiên, hoặc dùng ES256 + JWKS.

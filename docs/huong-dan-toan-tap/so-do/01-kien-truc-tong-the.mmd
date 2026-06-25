@@ -1,0 +1,29 @@
+flowchart TB
+    Client["👤 Client / Service<br/>(gửi JWT hoặc ký HMAC)"]
+
+    subgraph GW["🛡️ API GATEWAY (FastAPI :8000)"]
+        direction TB
+        RL["Rate-limit (slowapi)<br/>đếm theo IP"]
+        M1["Middleware 1: hmac_auth<br/>(chạy trước - LIFO)"]
+        M2["Middleware 2: jwt_auth"]
+        M3["Middleware 3: structured_logging<br/>(ghi log JSON)"]
+        EP["Endpoints:<br/>/health /api/public<br/>/api/protected /api/service<br/>/auth/revoke /metrics"]
+        RL --> M1 --> M2 --> M3 --> EP
+    end
+
+    KC["🔑 Keycloak :8081<br/>IdP - cấp token + JWKS"]
+    RD["📦 Redis :6379<br/>jti blacklist + nonce + rate"]
+    VA["🗄️ Vault :8200<br/>HMAC key, HS256 secret"]
+    JG["🔭 Jaeger :16686<br/>tracing"]
+    PR["📊 Prometheus :9090"]
+    GF["📈 Grafana :3001"]
+
+    Client --> GW
+    M2 -.verify chữ ký JWKS.-> KC
+    M2 -.check jti revoked.-> RD
+    M1 -.check nonce replay.-> RD
+    M1 -.lấy HMAC secret.-> VA
+    RL -.bộ đếm.-> RD
+    GW -.gửi trace.-> JG
+    PR -.scrape /metrics.-> GW
+    PR --> GF

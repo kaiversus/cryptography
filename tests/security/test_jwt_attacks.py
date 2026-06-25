@@ -2,6 +2,7 @@ from tests.security.helpers import make_token, make_alg_none_token
 from gateway.storage import revocation as _revocation
 
 PROTECTED = "/api/protected"
+ADMIN = "/api/admin"
 
 
 def _auth(tok: str) -> dict:
@@ -56,6 +57,22 @@ def test_sec06_wrong_issuer(client):
     tok = make_token(iss="http://evil.example.com/realms/fake")
     r = client.get(PROTECTED, headers=_auth(tok))
     assert r.status_code == 401
+
+
+def test_sec11_privilege_escalation_no_role(client):
+    # SEC-11 (E1-IG): token hợp lệ của user thường gọi endpoint admin -> 403.
+    # Authentication pass (đúng chữ ký) nhưng authorization fail (thiếu role admin).
+    tok = make_token()  # không có role "admin"
+    r = client.get(ADMIN, headers=_auth(tok))
+    assert r.status_code == 403, r.text
+    assert "forbidden" in r.text.lower()
+
+
+def test_sec11_admin_role_allowed(client):
+    # Mặt còn lại: token có role admin thì vào được -> 200.
+    tok = make_token(extra={"realm_access": {"roles": ["admin"]}})
+    r = client.get(ADMIN, headers=_auth(tok))
+    assert r.status_code == 200, r.text
 
 
 def test_sec10_revoked_jti(client):

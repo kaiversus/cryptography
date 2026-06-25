@@ -15,6 +15,11 @@ os.environ.setdefault("OTEL_SDK_DISABLED", "true")
 # cũng bị từ chối (mọi /api/protected trả 401) làm smoke test sai lệch.
 os.environ.setdefault("HS256_SECRET", "nt219-secret-key")
 
+# Sau hardening fail-closed: dev secret HMAC chỉ dùng khi bật tường minh, và Vault
+# client đòi token. Test bật opt-in + cấp token giả để giữ hành vi cũ.
+os.environ.setdefault("HMAC_ALLOW_DEV_SECRETS", "1")
+os.environ.setdefault("VAULT_TOKEN", "test-vault-token")
+
 # slowapi Limiter dùng storage Redis (REDIS_URL). Trong unit test không có Redis,
 # ép dùng in-memory storage để rate-limit không gọi mạng. Phải set trước khi
 # import gateway.main vì limiter khởi tạo lúc import.

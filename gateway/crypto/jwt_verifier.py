@@ -73,9 +73,10 @@ def verify_token(token: str) -> dict:
             # Dữ liệu được trích xuất từ biến môi trường do HashiCorp Vault hoặc Infra thiết lập.
             secret = os.getenv("HS256_SECRET")
             if not secret:
-                # Cơ chế dự phòng an toàn (Fallback) khớp với giá trị gieo (seed) của hệ thống Vault hạ tầng
-                secret = "hs256-realm-shared-secret-32b!!"
-            
+                # Fail-closed: không có secret cấu hình thì từ chối, tuyệt đối không
+                # dùng giá trị hardcode trong mã nguồn (tránh lộ secret + khóa yếu).
+                raise TokenInvalid("Server misconfiguration: HS256_SECRET not provisioned")
+
             return jwt.decode(
                 token, 
                 secret, 

@@ -12,7 +12,9 @@ from cachetools import TTLCache
 
 
 VAULT_ADDR = os.getenv("VAULT_ADDR", "http://vault:8200")
-VAULT_TOKEN = os.getenv("VAULT_TOKEN", "dev-root-token")
+# Không hardcode token. Production cấp qua AppRole/Kubernetes auth (least-privilege),
+# mỗi service một policy hẹp. Thiếu token → fail-closed (xem _require_token).
+VAULT_TOKEN = os.getenv("VAULT_TOKEN")
 VAULT_MOUNT = os.getenv("VAULT_MOUNT", "secret")
 CACHE_TTL = int(os.getenv("VAULT_CACHE_TTL", "300"))
 
@@ -27,6 +29,13 @@ def _kv_url(path: str) -> str:
     return f"{VAULT_ADDR.rstrip('/')}/v1/{VAULT_MOUNT}/data/{path.lstrip('/')}"
 
 
+def _require_token() -> str:
+    """Fail-closed: không có token thì không gọi Vault."""
+    if not VAULT_TOKEN:
+        raise VaultError("vault_token_not_configured")
+    return VAULT_TOKEN
+
+
 def get_secret(path: str, field: str = "value") -> str:
     """Đọc 1 field trong KV-v2 secret. Cache 5 phút."""
     cache_key = f"{path}::{field}"
@@ -35,7 +44,7 @@ def get_secret(path: str, field: str = "value") -> str:
     try:
         resp = httpx.get(
             _kv_url(path),
-            headers={"X-Vault-Token": VAULT_TOKEN},
+            headers={"X-Vault-Token": _require_token()},
             timeout=3.0,
         )
         resp.raise_for_status()
@@ -59,7 +68,7 @@ def get_secret_dict(path: str) -> dict[str, Any]:
     try:
         resp = httpx.get(
             _kv_url(path),
-            headers={"X-Vault-Token": VAULT_TOKEN},
+            headers={"X-Vault-Token": _require_token()},
             timeout=3.0,
         )
         resp.raise_for_status()

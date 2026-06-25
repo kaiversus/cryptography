@@ -201,6 +201,36 @@ def scene6_observability(c: httpx.Client):
     print("           - Prometheus: http://localhost:9090/targets (gateway UP)")
 
 
+def scene7_authz(c: httpx.Client, token: str | None):
+    banner("CẢNH 7 — Chống leo thang quyền (SEC-11, /api/admin chỉ cho role admin)")
+    if not token:
+        print("  [SKIP] cần token thật.")
+        return
+    # Token client_credentials thường KHÔNG có role admin -> phải bị 403 (authz),
+    # khác với 401 (authn). Đây là vector 6: user hợp lệ gọi endpoint admin.
+    r = c.get(f"{GATEWAY}/api/admin", headers={"Authorization": f"Bearer {token}"})
+    check("7", "SEC-11: token thiếu role admin gọi /api/admin -> 403", 403, r.status_code)
+    if r.status_code == 403:
+        print(f"         {r.json()}")
+
+
+def scene8_audit(c: httpx.Client):
+    banner("CẢNH 8 — Sổ audit chống chối bỏ (SEC-13, MT-NONREP)")
+    body = b'{"id":1}'
+    # 1 request hợp lệ (allow) + 1 request tamper (deny) -> cả hai phải vào sổ.
+    c.post(f"{GATEWAY}/api/service", content=body, headers=hmac_headers(body))
+    c.post(f"{GATEWAY}/api/service", content=b'{"id":999}', headers=hmac_headers(body))
+    r = c.get(f"{GATEWAY}/audit/recent?limit=10")
+    recs = r.json().get("records", []) if r.status_code == 200 else []
+    has_allow = any(x["actor"] == "dev-key-01" and x["decision"] == "allow" for x in recs)
+    has_deny = any(x["actor"] == "dev-key-01" and x["decision"] == "deny" for x in recs)
+    check("8", "Audit ghi cả allow lẫn deny kèm danh tính dev-key-01", True,
+          has_allow and has_deny)
+    for x in recs[-4:]:
+        print(f"         {x['ts']} {x['channel']} actor={x['actor']} "
+              f"{x['decision']} {x.get('reason', '')}")
+
+
 def summary() -> int:
     banner("TỔNG KẾT")
     passed = sum(1 for *_, ok in RESULTS if ok)
@@ -224,6 +254,10 @@ def main() -> int:
         scene4_revocation(c, token)
         scene5_rate_limit(c)
         scene6_observability(c)
+        # Cảnh 4 đã thu hồi `token` -> lấy token mới (jti khác) cho cảnh authz,
+        # nếu không sẽ dính 401 revoked thay vì 403 thiếu quyền.
+        scene7_authz(c, get_token(c))
+        scene8_audit(c)
     return summary()
 
 

@@ -16,16 +16,17 @@ TIMESTAMP_WINDOW = 300
 NONCE_TTL = 600
 EMPTY_BODY_HASH = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
-# Dev fallback. Production phải bật HMAC_REQUIRE_VAULT=1 để fail-closed.
+# Dev secret chỉ dùng khi BẬT TƯỜNG MINH HMAC_ALLOW_DEV_SECRETS=1 (dev/test).
+# Mặc định production fail-closed: không có secret trong Vault thì từ chối request.
 _DEV_SECRETS = {
     "dev-key-01": b"dev-shared-secret",
 }
 _VAULT_PATH_TEMPLATE = os.getenv("HMAC_VAULT_PATH", "gateway/hmac/{key_id}")
-_REQUIRE_VAULT = os.getenv("HMAC_REQUIRE_VAULT", "0") == "1"
+_ALLOW_DEV_SECRETS = os.getenv("HMAC_ALLOW_DEV_SECRETS", "0") == "1"
 
 
 def _resolve_secret(key_id: str) -> bytes | None:
-    """Lookup theo thứ tự: Vault → dev fallback (nếu không bắt buộc Vault).
+    """Lookup secret: ưu tiên Vault. Chỉ rơi về dev secret khi được bật tường minh.
 
     Trả None nếu không tìm được secret hợp lệ — caller raise unknown_key.
     """
@@ -35,12 +36,13 @@ def _resolve_secret(key_id: str) -> bytes | None:
         try:
             return get_secret(path, field="value").encode()
         except VaultError:
-            if _REQUIRE_VAULT:
-                return None
+            pass
     except ImportError:
-        if _REQUIRE_VAULT:
-            return None
-    return _DEV_SECRETS.get(key_id)
+        pass
+    # Vault không cấp được secret → fail-closed, trừ khi dev/test bật opt-in.
+    if _ALLOW_DEV_SECRETS:
+        return _DEV_SECRETS.get(key_id)
+    return None
 
 _UUID_V4_RE = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"

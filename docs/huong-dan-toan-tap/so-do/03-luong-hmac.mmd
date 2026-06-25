@@ -1,0 +1,23 @@
+sequenceDiagram
+    participant C as Client (service)
+    participant GW as hmac_auth middleware
+    participant H as hmac_verifier.py
+    participant V as Vault
+    participant R as Redis (nonce store)
+    participant EP as Endpoint /api/service
+
+    Note over C: Tự ký: dựng canonical request<br/>-> string-to-sign -> HMAC-SHA256
+    C->>GW: POST /api/service + X-Key-Id, X-Timestamp,<br/>X-Nonce, X-Signature + body
+    GW->>H: verify_hmac_request(...)
+    H->>H: 1-2. Parse 4 header + check format
+    H->>H: 3. |now - timestamp| <= 300s? (chống timestamp cũ)
+    H->>R: 4. nonce đã tồn tại? (chống replay)
+    R-->>H: có -> replay_detected (401)
+    H->>V: 5. Lấy secret theo X-Key-Id
+    V-->>H: secret (hoặc dev fallback)
+    H->>H: 6-8. Dựng lại chữ ký kỳ vọng từ secret + body
+    H->>H: 9. compare_digest(expected, signature) constant-time
+    H->>R: 10. SETEX nonce TTL 600s (đánh dấu đã dùng)
+    H-->>GW: OK hoặc raise HMACInvalid
+    GW->>EP: cho qua
+    EP-->>C: 200 verified

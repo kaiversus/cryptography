@@ -1,0 +1,23 @@
+sequenceDiagram
+    participant U as Client
+    participant KC as Keycloak (IdP)
+    participant GW as Gateway middleware (jwt_auth)
+    participant V as jwt_verifier.py
+    participant R as Redis (revocation)
+    participant EP as Endpoint /api/protected
+
+    U->>KC: 1. Đăng nhập / client_credentials
+    KC-->>U: 2. access_token (JWT ký ES256)
+    U->>GW: 3. GET /api/protected + Bearer <token>
+    GW->>GW: 4. Có header "Bearer "? Không -> 401
+    GW->>V: 5. verify_token(token)
+    V->>V: 6. Kiểm cấu trúc 3 phần + ký tự base64url
+    V->>V: 7. Đọc header: alg, kid (chống alg=none)
+    V->>KC: 8. Lấy JWKS (public key), cache 5 phút
+    KC-->>V: 9. Danh sách khóa công khai
+    V->>V: 10. Verify chữ ký + exp/iss/aud
+    V-->>GW: 11. payload (claims) hoặc raise TokenInvalid
+    GW->>R: 12. is_revoked(jti)?
+    R-->>GW: 13. Có/Không trong blacklist
+    GW->>EP: 14. Hợp lệ -> cho qua (request.state.user)
+    EP-->>U: 15. 200 {user, roles}

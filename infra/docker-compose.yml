@@ -11,7 +11,9 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports: ["6379:6379"]
+    # KHÔNG publish 6379 ra host: gateway gọi nội bộ qua redis:6379 trong gw-net.
+    # (Cổng 6379 còn nằm trong dải Windows đặt trước 6341-6440 nên bind host sẽ lỗi.)
+    expose: ["6379"]
 
   vault:
     image: hashicorp/vault:1.15

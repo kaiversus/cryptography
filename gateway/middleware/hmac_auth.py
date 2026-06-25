@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from gateway.crypto.hmac_verifier import verify_hmac_request, HMACInvalid
 from gateway.observability.metrics import record_failure, record_success
 from gateway.observability.tracing import annotate_auth_span
+from gateway.observability.audit import record_audit
 
 SERVICE_PREFIX = "/api/service"
 
@@ -40,10 +41,15 @@ async def hmac_auth_middleware(request: Request, call_next):
         record_failure("hmac", reason)
         annotate_auth_span("hmac", "failure", reason=reason,
                            latency_ms=(time.perf_counter() - start) * 1000)
+        record_audit(channel="hmac", actor=request.headers.get("x-key-id", ""),
+                     decision="deny", method=request.method,
+                     path=request.url.path, reason=reason)
         return JSONResponse(status_code=401, content={"detail": str(e)})
 
     record_success("hmac")
     annotate_auth_span("hmac", "success",
                        user_id=request.headers.get("x-key-id", ""),
                        latency_ms=(time.perf_counter() - start) * 1000)
+    record_audit(channel="hmac", actor=request.headers.get("x-key-id", ""),
+                 decision="allow", method=request.method, path=request.url.path)
     return await call_next(request)
