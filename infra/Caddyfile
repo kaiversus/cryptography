@@ -1,0 +1,24 @@
+# Edge proxy giu TLS (chung minh KB4 - chong nghe len; KB9 - JWKS qua TLS).
+# 'tls internal' = Caddy tu sinh chung chi CA noi bo (du cho demo localhost, khong can Internet).
+localhost {
+    tls internal
+
+    # Ghi access log ra stdout -> 'docker compose logs edge' thay tung request kem TLS version+cipher
+    # (bang chung minh bach cho KB4/KB9 ngay tren log Docker).
+    log {
+        output stdout
+        format console
+    }
+
+    # KB9: phuc vu endpoint JWKS/OIDC cua Keycloak QUA TLS.
+    # Gateway (prod) se fetch JWKS tu https://.../realms/... -> MITM khong tra duoc JWKS gia
+    # vi khong gia duoc chung chi TLS. Demo: curl -k https://localhost:9443/realms/nt219/.../certs
+    handle /realms/* {
+        reverse_proxy keycloak:8080
+    }
+
+    # KB4: con lai -> Gateway (kenh client<->gateway da ma hoa).
+    handle {
+        reverse_proxy gateway:8000
+    }
+}

@@ -10,6 +10,8 @@ import re
 import time
 from typing import Mapping
 
+from gateway.observability.tracing import checkpoint_span
+
 ALGORITHM = "HMAC-SHA256"
 SCOPE = "gateway-internal/v1"
 TIMESTAMP_WINDOW = 300
@@ -88,49 +90,50 @@ def verify_hmac_request(method, path, query, headers, body, nonce_store):
     """Verify HMAC request, raise HMACInvalid nếu sai. Theo 10 bước trong spec."""
     h = {k.lower(): v for k, v in headers.items()}
 
-    # 1. Parse 4 header
-    try:
-        ts = h["x-timestamp"]
-        nonce = h["x-nonce"]
-        key_id = h["x-key-id"]
-        signature = h["x-signature"]
-    except KeyError as e:
-        raise HMACInvalid(f"missing_header: {e.args[0]}")
-
-    # 2. Validate format
-    if not ts.isdigit():
-        raise HMACInvalid("invalid_format: timestamp")
-    if not _UUID_V4_RE.match(nonce):
-        raise HMACInvalid("invalid_format: nonce")
-    if not _HEX64_RE.match(signature):
-        raise HMACInvalid("invalid_format: signature")
+    # 1-2. Parse 4 header + validate format (checkpoint cho Jaeger vẽ luồng)
+    with checkpoint_span("hmac.parse_and_format"):
+        try:
+            ts = h["x-timestamp"]
+            nonce = h["x-nonce"]
+            key_id = h["x-key-id"]
+            signature = h["x-signature"]
+        except KeyError as e:
+            raise HMACInvalid(f"missing_header: {e.args[0]}")
+        if not ts.isdigit():
+            raise HMACInvalid("invalid_format: timestamp")
+        if not _UUID_V4_RE.match(nonce):
+            raise HMACInvalid("invalid_format: nonce")
+        if not _HEX64_RE.match(signature):
+            raise HMACInvalid("invalid_format: signature")
 
     # 3. Timestamp window
-    if abs(int(time.time()) - int(ts)) > TIMESTAMP_WINDOW:
-        raise HMACInvalid("invalid_timestamp")
+    with checkpoint_span("hmac.check_timestamp"):
+        if abs(int(time.time()) - int(ts)) > TIMESTAMP_WINDOW:
+            raise HMACInvalid("invalid_timestamp")
 
-    # 4. Nonce check
+    # 4. Nonce check (chống replay)
     nonce_key = f"nonce:{nonce}"
-    if nonce_store.exists(nonce_key):
-        raise HMACInvalid("replay_detected")
+    with checkpoint_span("hmac.check_nonce_replay"):
+        if nonce_store.exists(nonce_key):
+            raise HMACInvalid("replay_detected")
 
     # 5. Secret lookup (Vault → dev fallback)
-    secret = _resolve_secret(key_id)
-    if secret is None:
-        raise HMACInvalid("unknown_key")
+    with checkpoint_span("hmac.lookup_secret"):
+        secret = _resolve_secret(key_id)
+        if secret is None:
+            raise HMACInvalid("unknown_key")
 
-    # 6-8. Recompute signature
-    signed_headers_values = {
-        "host": h.get("host", ""),
-        "x-key-id": key_id,
-        "x-nonce": nonce,
-        "x-timestamp": ts,
-    }
-    expected = compute_signature(method, path, query, signed_headers_values, body, secret)
-
-    # 9. Constant-time compare
-    if not hmac.compare_digest(expected, signature):
-        raise HMACInvalid("invalid_signature")
+    # 6-9. Recompute + constant-time compare chữ ký
+    with checkpoint_span("hmac.verify_signature"):
+        signed_headers_values = {
+            "host": h.get("host", ""),
+            "x-key-id": key_id,
+            "x-nonce": nonce,
+            "x-timestamp": ts,
+        }
+        expected = compute_signature(method, path, query, signed_headers_values, body, secret)
+        if not hmac.compare_digest(expected, signature):
+            raise HMACInvalid("invalid_signature")
 
     # 10. SET nonce sau khi pass tất cả
     nonce_store.setex(nonce_key, NONCE_TTL, "1")

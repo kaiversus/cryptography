@@ -7,7 +7,8 @@ services:
     environment:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
-    ports: ["8081:8080"]
+    # Host 18081 (8081 nằm trong dải Windows giữ trước hôm nay). Trong container vẫn 8080.
+    ports: ["18081:8080"]
 
   redis:
     image: redis:7-alpine
@@ -24,7 +25,9 @@ services:
       VAULT_DEV_ROOT_TOKEN_ID: dev-root-token
       VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
       VAULT_ADDR: http://0.0.0.0:8200
-    ports: ["8200:8200"]
+    # KHÔNG publish 8200 ra host: Gateway gọi nội bộ qua vault:8200 trong gw-net.
+    # (Cổng 8200 nằm trong dải Windows giữ trước 8186-8285 nên bind host sẽ lỗi.)
+    expose: ["8200"]
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8200/v1/sys/health"]
       interval: 5s
@@ -78,9 +81,19 @@ services:
       - ./grafana-dashboard.json:/var/lib/grafana/dashboards/gateway.json:ro
     depends_on: [prometheus]
 
+  # Edge TLS cho KB4 (chong nghe len): client noi HTTPS o 8443 -> Caddy giai ma -> gateway:8000.
+  edge:
+    image: caddy:2
+    # Host 9443 (8443 nằm trong dải Windows giữ trước). Trong container vẫn 443.
+    ports: ["9443:443"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on: [gateway]
+
   gateway:
     build: ../gateway
-    ports: ["8000:8000"]
+    # Host 18000 (8000 nằm trong dải Windows giữ trước hôm nay). Trong container vẫn 8000.
+    ports: ["18000:8000"]
     depends_on:
       keycloak: { condition: service_started }
       redis: { condition: service_started }
@@ -88,6 +101,8 @@ services:
       jaeger: { condition: service_started }
     environment:
       KEYCLOAK_URL: http://keycloak:8080
+      # iss của token khớp cổng host Keycloak (18081). JWKS vẫn fetch nội bộ keycloak:8080.
+      JWT_ISSUER: http://localhost:18081/realms/nt219
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       VAULT_ADDR: http://vault:8200

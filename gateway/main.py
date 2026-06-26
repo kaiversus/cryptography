@@ -21,11 +21,7 @@ setup_rate_limit(app)
 # /metrics endpoint cho Prometheus scrape.
 Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
-# Distributed tracing (OpenTelemetry -> Jaeger). Tự no-op nếu OTEL_SDK_DISABLED=true.
-setup_tracing(app)
-
 # === MIDDLEWARE GHI LOG JSON (STRUCTURED LOGGING) ===
-@app.middleware("http")
 async def structured_logging_middleware(request: Request, call_next):
     start_time = time.time()
     
@@ -44,15 +40,26 @@ async def structured_logging_middleware(request: Request, call_next):
                 "path": request.url.path,
                 "status_code": response.status_code,
                 "client_ip": request.client.host if request.client else "127.0.0.1",
-                "latency_ms": process_time_ms
+                "latency_ms": process_time_ms,
+                # Nhan kich ban demo (neu request gan header X-Demo-KB) -> loc log theo tung KB.
+                "demo_kb": request.headers.get("x-demo-kb", "")
             }
         }
     )
     return response
 
-# Middleware FastAPI chạy LIFO (đăng ký sau -> chạy TRƯỚC)
+# Middleware FastAPI chạy LIFO (đăng ký SAU -> chạy TRƯỚC = bọc NGOÀI hơn).
 app.middleware("http")(hmac_auth_middleware)
 app.middleware("http")(jwt_auth_middleware)
+# Structured logging đăng ký SAU auth -> bọc NGOÀI auth. Quan trọng cho tracing:
+# logging middleware LUÔN gọi call_next, nên khi tới các middleware auth (bên trong) thì
+# đã qua 1 call_next -> context OTel ổn định -> span con jwt.*/hmac.* nối ĐÚNG vào server
+# span (không bị tách thành trace riêng).
+app.middleware("http")(structured_logging_middleware)
+
+# Distributed tracing (OpenTelemetry -> Jaeger). PHẢI gọi SAU mọi middleware để OTel bọc
+# NGOÀI cùng -> server span active suốt request. Tự no-op nếu OTEL_SDK_DISABLED=true.
+setup_tracing(app)
 
 # ==========================================
 # CÁC ENDPOINT VÀ CẤU HÌNH RATE LIMIT
