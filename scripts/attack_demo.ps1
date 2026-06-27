@@ -61,6 +61,7 @@ function HttpCode {
     try {
         $Headers = $Headers.Clone()
         if ($script:CURKB) { $Headers["X-Demo-KB"] = $script:CURKB }
+        $Headers["ngrok-skip-browser-warning"] = "true"   # bo qua trang canh bao ngrok free
         $p = @{ Uri = $Uri; Method = $Method; Headers = $Headers; TimeoutSec = 8; UseBasicParsing = $true }
         if ($null -ne $Body) { $p.Body = $Body }
         if ($ContentType)    { $p.ContentType = $ContentType }
@@ -119,7 +120,7 @@ $script:CURKB = "KB3"
 PostService '{"id":1}' '{"id":999}' (NowTs) (Uuid4) | Out-Null
 $auditOk = $false
 try {
-    $a = Invoke-RestMethod -Uri "$GATEWAY/audit/recent?limit=10" -TimeoutSec 8
+    $a = Invoke-RestMethod -Uri "$GATEWAY/audit/recent?limit=10" -TimeoutSec 8 -Headers @{ "ngrok-skip-browser-warning" = "true" }
     $rec = $a.records | Where-Object { $_.actor -eq "dev-key-01" -and $_.decision -eq "deny" } | Select-Object -Last 1
     $auditOk = [bool]$rec
     if ($rec) { "  ban ghi audit: actor=$($rec.actor) decision=$($rec.decision) reason=$($rec.reason) ts=$($rec.ts)" }
@@ -129,12 +130,14 @@ Check "Audit ghi request xau kem danh tinh dev-key-01" $true $auditOk
 # =========================== KB4 ===========================
 Hr "KB4 - Nghe len duong truyen: chong bang TLS (kenh ma hoa, sniffer khong doc duoc token)"
 # 1 payload: goi qua HTTPS (Caddy edge). Bat tay TLS thanh cong + 200 = kenh da ma hoa.
-$tlsHost = ($HTTPS -replace '^https?://','') -replace ':.*$',''
-$tlsPort = [int](($HTTPS -split ':')[-1])
+$tlsHost = ($HTTPS -replace '^https?://','') -replace '[:/].*$',''
+# Lay cong neu URL co ghi (vd :9443); neu khong (vd URL ngrok) -> mac dinh 443/80.
+$hp = $HTTPS -replace '^https?://',''
+if ($hp -match ':(\d+)') { $tlsPort = [int]$Matches[1] } elseif ($HTTPS -match '^https') { $tlsPort = 443 } else { $tlsPort = 80 }
 $tlsInfo = TlsInfo $tlsHost $tlsPort
 if ($tlsInfo) { "  bang chung ma hoa: bat tay $tlsInfo  (sniffer chi thay ciphertext)" }
 $k4 = 0
-try { $k4 = [int](& curl.exe -sk -o NUL -w "%{http_code}" -H "X-Demo-KB: KB4" "$HTTPS/health") } catch { $k4 = 0 }
+try { $k4 = [int](& curl.exe -sk -o NUL -w "%{http_code}" -H "X-Demo-KB: KB4" -H "ngrok-skip-browser-warning: true" "$HTTPS/health") } catch { $k4 = 0 }
 Check "Kenh HTTPS/TLS hoat dong -> 200 (token KHONG di plaintext)" 200 $k4
 
 # =========================== KB5 ===========================
@@ -165,7 +168,7 @@ $script:CURKB = "KB9"
 # 1 payload: tai JWKS qua HTTPS (Caddy) -> phai tra ve bo khoa that qua kenh ma hoa.
 $jwksUrl = "$HTTPS/realms/$REALM/protocol/openid-connect/certs"
 $jwksBody = ""
-try { $jwksBody = (& curl.exe -sk -H "X-Demo-KB: KB9" "$jwksUrl") } catch { }
+try { $jwksBody = (& curl.exe -sk -H "X-Demo-KB: KB9" -H "ngrok-skip-browser-warning: true" "$jwksUrl") } catch { }
 $tlsInfo9 = TlsInfo $tlsHost $tlsPort
 if ($tlsInfo9) { "  kenh JWKS ma hoa: bat tay $tlsInfo9" }
 $jwksOk = ($jwksBody -match '"keys"') -and ($jwksBody -match '"kid"')

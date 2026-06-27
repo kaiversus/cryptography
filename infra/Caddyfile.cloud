@@ -1,0 +1,45 @@
+# =============================================================================
+#  Caddyfile.cloud  —  Edge TLS cho TRIEN KHAI CLOUD (HTTPS that, Let's Encrypt)
+# -----------------------------------------------------------------------------
+#  Khac Caddyfile (dev) o 2 diem:
+#    1. Dung DOMAIN THAT ({$GATEWAY_DOMAIN}) thay cho 'localhost' -> Caddy TU XIN
+#       cert Let's Encrypt (HTTPS trusted, browser khong canh bao, KHONG can -k).
+#    2. La CUA DUY NHAT ra Internet (cong 80 cho ACME challenge + 443 cho HTTPS).
+#
+#  Domain + email lay tu bien moi truong (xem .env.cloud.example).
+# =============================================================================
+
+{
+	# Email Let's Encrypt (tuy chon, nen co de nhan canh bao het han cert).
+	email {$ACME_EMAIL}
+}
+
+{$GATEWAY_DOMAIN} {
+	# Caddy tu dong xin + gia han cert Let's Encrypt cho domain nay.
+	# (Cert luu trong volume caddy_data -> song qua restart, tranh dinh rate-limit LE.)
+
+	# Ghi access log ra stdout -> 'docker compose logs edge' thay tung request kem
+	# TLS version + duong dan (bang chung minh bach cho KB4/KB9).
+	log {
+		output stdout
+		format console
+	}
+
+	# KB9 (S1-IdP): endpoint OIDC/JWKS cua Keycloak phuc vu QUA TLS THAT.
+	#   - Client lay token:  https://<domain>/realms/nt219/protocol/openid-connect/token
+	#   - Gateway fetch JWKS: https://<domain>/realms/nt219/protocol/openid-connect/certs
+	#     Gateway goi chinh <domain> nay nhung qua Docker network alias (xem compose)
+	#     -> resolve ve container edge trong noi bo, cert CN khop, CA cong khai duoc tin.
+	#   => MITM khong tra duoc JWKS gia vi khong gia duoc cert TLS.
+	handle /realms/* {
+		reverse_proxy keycloak:8080 {
+			header_up X-Forwarded-Proto https
+		}
+	}
+
+	# KB4 (CONF): moi traffic client <-> he thong di qua HTTPS -> chuyen vao Gateway.
+	# (Caddy v2 MAC DINH giu nguyen Host header goc -> HMAC host signing van khop.)
+	handle {
+		reverse_proxy gateway:8000
+	}
+}

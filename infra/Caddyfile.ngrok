@@ -1,0 +1,30 @@
+# =============================================================================
+#  Caddyfile.ngrok  —  Edge cho ngrok (HTTP-only; ngrok lo phan HTTPS)
+# -----------------------------------------------------------------------------
+#  ngrok da cap cert HTTPS trusted o dau ben kia (https://<ten>.ngrok-free.app),
+#  nen Caddy o day chi can chay HTTP thuong va dinh tuyen theo duong dan, gom
+#  Keycloak + Gateway ve CHUNG MOT hostname.
+# =============================================================================
+
+:80 {
+	log {
+		output stdout
+		format console
+	}
+
+	# KB9: endpoint OIDC/JWKS cua Keycloak -> phuc vu qua URL HTTPS cua ngrok.
+	#  - Client lay token:  https://<domain>/realms/nt219/protocol/openid-connect/token
+	#  - Tai JWKS:          https://<domain>/realms/nt219/protocol/openid-connect/certs
+	#  header_up X-Forwarded-Proto https: bao Keycloak biet client dang dung HTTPS
+	#  (ngrok->Caddy la HTTP, neu khong set Keycloak se phat token issuer sai scheme).
+	handle /realms/* {
+		reverse_proxy keycloak:8080 {
+			header_up X-Forwarded-Proto https
+		}
+	}
+
+	# KB4: moi traffic con lai (client <-> he thong) -> Gateway.
+	handle {
+		reverse_proxy gateway:8000
+	}
+}
